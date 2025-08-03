@@ -1,0 +1,32 @@
+{
+  "name": "zombie-navigator",
+  "version": "3.0.0",
+  "description": "A template for webextension development",
+  "main": "./dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "node script/clean.js ; eslint . ; webpack ; node script/build.cjs",
+    "watch": "webpack -w",
+    "clean": "node script/clean.js ; node script/clean-builds.js",
+    "test": "node script/test.js"
+  },
+  "author": "真空 et al.",
+  "license": "MPL-2.0",
+  "devDependencies": {
+    "@types/node": "^24.0",
+    "@types/webextension-polyfill": "^0.12.3",
+    "@typescript-eslint/eslint-plugin": "^5.49.0",
+    "@typescript-eslint/parser": "^5.49.0",
+    "eslint": "^8.33.0",
+    "ts-loader": "^9.4.2",
+    "typedoc": "^0.23.24",
+    "typescript": "<4.10.0",
+    "web-ext": "^8.9.0",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1"
+  },
+  "dependencies": {
+    "dexie": "^4.0.11",
+    "webextension-polyfill": "^0.12.0"
+  }
+}

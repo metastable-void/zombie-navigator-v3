@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "Zombie Navigator",
+  "version": "3.0.0",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "zombie-navigator@menhera.org",
+      "strict_min_version": "91.0"
+    }
+  },
+  "author": "真空 et al.",
+  "description": "Description.",
+  "permissions": [
+		"tabs",
+		"storage",
+		"downloads",
+    "notifications",
+    "contextualIdentities",
+    "cookies"
+  ],
+  "host_permissions": [
+		"*://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true,
+      "run_at": "document_start"
+    }
+  ],
+  "incognito": "not_allowed",
+  "background": {
+    "page": "background.html"
+  },
+	"action": {
+		"default_icon": {
+			"16": "images/icon.svg"
+		},
+		"default_title": "Zombie Navigator"
+	},
+  "icons": {
+    "48": "images/icon.svg",
+    "96": "images/icon.svg"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["panel-inner.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'"
+  }
+}

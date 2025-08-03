@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2022"
+    ],
+    "module": "es2022",
+    "sourceMap": true,
+    "declaration": false,
+    "newLine": "lf",
+    "outDir": "./ts-dist/",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": [
+    "src/**/*",
+    "*.js",
+    "*.cjs",
+    ".eslintrc.cjs",
+    "script/*.js"
+, "script/build.cjs"  ]
+}
