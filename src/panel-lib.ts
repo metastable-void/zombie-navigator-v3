@@ -50,6 +50,13 @@ const getCache = async (url: string): Promise<string | null> => {
   return doc as string | null;
 };
 
+const clearCache = async () => {
+  await browser.runtime.sendMessage({
+    cmd: 'cache_clear',
+    url: '',
+  });
+};
+
 const downloadString = (str: string, fileName: string) => {
   const blob = new Blob([str], {
     type: 'application/octet-stream',
@@ -377,6 +384,7 @@ const gZombie = {
   Progress,
   addHorizontalLine,
   downloadString,
+  clearCache,
 };
 
 globalThis.zombie = gZombie;

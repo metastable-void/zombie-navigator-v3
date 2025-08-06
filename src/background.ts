@@ -44,8 +44,6 @@ declare global {
 
 globalThis.gDebugTool = debugTool;
 
-const cache = caches.open('dom_cache_v1');
-
 browser.runtime.onMessage.addListener((msg: unknown) => {
   if (!msg) return;
   if ('object' != typeof msg) return;
@@ -54,7 +52,7 @@ browser.runtime.onMessage.addListener((msg: unknown) => {
   switch (msg.cmd) {
     case 'cache_get': {
       const url = msg.url;
-      return cache.then(async (cache) => {
+      return caches.open('dom_cache_v1').then(async (cache) => {
         const res = await cache.match(url);
         const text = await res?.text() ?? null;
         return text;
@@ -66,7 +64,7 @@ browser.runtime.onMessage.addListener((msg: unknown) => {
       if ('string' != typeof msg.doc) break;
       const url = msg.url;
       const data = msg.doc;
-      return cache.then(async (cache) => {
+      return caches.open('dom_cache_v1').then(async (cache) => {
         await cache.put(url, new Response(data, {
           status: 200,
           headers: {
@@ -74,6 +72,10 @@ browser.runtime.onMessage.addListener((msg: unknown) => {
           },
         }));
       });
+    }
+
+    case 'cache_clear': {
+      return caches.delete('dom_cache_v1');
     }
   }
 });
