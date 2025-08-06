@@ -34,8 +34,24 @@ const ready = new Promise<void>((res) => {
   });
 });
 
+const downloadString = (str: string, fileName: string) => {
+  const blob = new Blob([str], {
+    type: 'application/octet-stream',
+  });
+  const a = document.createElement('a');
+  a.download = fileName;
+  const url = URL.createObjectURL(blob);
+  a.href = url;
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 0);
+};
 
 const captureDom = async (url: string) => {
+  if (!url) {
+    throw new Error('Empty URL');
+  }
   await ready;
   const windowId = gWindowId;
   const cookieStoreId = gCookieStoreId;
@@ -82,7 +98,7 @@ const captureDom = async (url: string) => {
         properties: ['status'],
       });
     }),
-    new Promise<never>((_res, rej) => setTimeout(() => rej('timeout'), 30000)),
+    new Promise<never>((_res, rej) => setTimeout(() => rej('timeout'), 60000)),
   ]).catch<never>((e) => {
     if (closed) throw e;
     browser.tabs.remove(tabId).catch((e) => {
@@ -178,6 +194,14 @@ class Button {
 
   public get text() {
     return this.#element.textContent ?? '';
+  }
+
+  public set disabled(disabled: boolean) {
+    this.#element.disabled = disabled;
+  }
+
+  public get disabled() {
+    return this.#element.disabled;
   }
 }
 
@@ -330,6 +354,7 @@ const gZombie = {
   Paragraph,
   Progress,
   addHorizontalLine,
+  downloadString,
 };
 
 globalThis.zombie = gZombie;
