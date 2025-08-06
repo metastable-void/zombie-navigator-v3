@@ -44,6 +44,40 @@ declare global {
 
 globalThis.gDebugTool = debugTool;
 
+const cache = caches.open('dom_cache_v1');
+
+browser.runtime.onMessage.addListener((msg: unknown) => {
+  if (!msg) return;
+  if ('object' != typeof msg) return;
+  if (!('cmd' in msg) || !('url' in msg)) return;
+  if ('string' != typeof msg.url) return;
+  switch (msg.cmd) {
+    case 'cache_get': {
+      const url = msg.url;
+      return cache.then(async (cache) => {
+        const res = await cache.match(url);
+        const text = await res?.text() ?? null;
+        return text;
+      });
+    }
+
+    case 'cache_put': {
+      if (!('doc' in msg)) break;
+      if ('string' != typeof msg.doc) break;
+      const url = msg.url;
+      const data = msg.doc;
+      return cache.then(async (cache) => {
+        await cache.put(url, new Response(data, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/html',
+          },
+        }));
+      });
+    }
+  }
+});
+
 const createSession = async () => {
   const ci = await browser.contextualIdentities.create({
     name: 'Zombie #nnn',

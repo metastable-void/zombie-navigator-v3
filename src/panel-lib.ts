@@ -18,13 +18,11 @@ interface ZombieScrapingResult<T> {
   result: T;
 }
 
-let gCache: Cache;
-
 let gCookieStoreId = '';
 let gWindowId = 0;
 
 const ready = new Promise<void>((res) => {
-  Promise.all([browser.tabs.getCurrent(), caches.open('dom_cache_v1')]).then(([tab, cache]) => {
+  Promise.all([browser.tabs.getCurrent()]).then(([tab]) => {
     const { cookieStoreId, windowId } = tab;
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const userContextId = parseInt(cookieStoreId!.split('-').slice(-1)[0]!, 10);
@@ -32,26 +30,24 @@ const ready = new Promise<void>((res) => {
 
     gCookieStoreId = cookieStoreId ?? '';
     gWindowId = windowId ?? 0;
-    gCache = cache;
     res();
   });
 });
 
 const putCache = async (url: string, data: string) => {
-  await ready;
-  await gCache.put(url, new Response(data, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/html',
-    },
-  }));
+  await browser.runtime.sendMessage({
+    cmd: 'cache_put',
+    url,
+    doc: data,
+  });
 };
 
 const getCache = async (url: string): Promise<string | null> => {
-  await ready;
-  const res = await gCache.match(url);
-  const text = await res?.text() ?? null;
-  return text;
+  const doc = await browser.runtime.sendMessage({
+    cmd: 'cache_get',
+    url,
+  });
+  return doc as string | null;
 };
 
 const downloadString = (str: string, fileName: string) => {
