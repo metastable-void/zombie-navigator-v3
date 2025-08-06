@@ -18,11 +18,13 @@ interface ZombieScrapingResult<T> {
   result: T;
 }
 
+let gCache: Cache;
+
 let gCookieStoreId = '';
 let gWindowId = 0;
 
 const ready = new Promise<void>((res) => {
-  browser.tabs.getCurrent().then((tab) => {
+  Promise.all([browser.tabs.getCurrent(), caches.open('dom_cache_v1')]).then(([tab, cache]) => {
     const { cookieStoreId, windowId } = tab;
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const userContextId = parseInt(cookieStoreId!.split('-').slice(-1)[0]!, 10);
@@ -30,9 +32,27 @@ const ready = new Promise<void>((res) => {
 
     gCookieStoreId = cookieStoreId ?? '';
     gWindowId = windowId ?? 0;
+    gCache = cache;
     res();
   });
 });
+
+const putCache = async (url: string, data: string) => {
+  await ready;
+  await gCache.put(url, new Response(data, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html',
+    },
+  }));
+};
+
+const getCache = async (url: string): Promise<string | null> => {
+  await ready;
+  const res = await gCache.match(url);
+  const text = await res?.text() ?? null;
+  return text;
+};
 
 const downloadString = (str: string, fileName: string) => {
   const blob = new Blob([str], {
@@ -53,63 +73,69 @@ const captureDom = async (url: string) => {
     throw new Error('Empty URL');
   }
   await ready;
-  const windowId = gWindowId;
-  const cookieStoreId = gCookieStoreId;
-  const tab = await browser.tabs.create({
-    windowId,
-    cookieStoreId,
-    url,
-    active: false,
-  });
 
-  const tabId = tab.id ?? 0;
-  let closed = false;
-  const res = await Promise.race([
-      new Promise<GetDomResponse>((resolve, reject) => {
-      const handler = (_tabId: number, _changeInfo: browser.Tabs.OnUpdatedChangeInfoType, tab: browser.Tabs.Tab) => {
-        if (tabId != tab.id) return;
-        if (tab.status != 'complete') return;
-        if (tab.url == 'about:blank') return;
-        browser.tabs.onUpdated.removeListener(handler);
-        browser.tabs.onRemoved.removeListener(closedHandler);
-
-        browser.tabs.sendMessage(tabId, {
-          messageType: 'request',
-          commandType: 'getDom',
-          requestId: Math.random().toString(),
-          payload: {},
-        }).then((res) => {
-          if (res && 'object' == typeof res) {
-            resolve(res as GetDomResponse);
-          } else {
-            console.error(res);
-          }
-        }).catch((e) => {
-          reject(e);
-        });
-      };
-      const closedHandler = (closedId: number) => {
-        if (tabId != closedId) return;
-        closed = true;
-        reject('Tab closed');
-      };
-      browser.tabs.onRemoved.addListener(closedHandler);
-      browser.tabs.onUpdated.addListener(handler, {
-        properties: ['status'],
-      });
-    }),
-    new Promise<never>((_res, rej) => setTimeout(() => rej('timeout'), 60000)),
-  ]).catch<never>((e) => {
-    if (closed) throw e;
-    browser.tabs.remove(tabId).catch((e) => {
-      console.error(e);
+  let cachedDoc = await getCache(url);
+  if (cachedDoc == null) {
+    const windowId = gWindowId;
+    const cookieStoreId = gCookieStoreId;
+    const tab = await browser.tabs.create({
+      windowId,
+      cookieStoreId,
+      url,
+      active: false,
     });
-    throw e;
-  });
 
-  await browser.tabs.remove(tabId);
+    const tabId = tab.id ?? 0;
+    let closed = false;
+    const res = await Promise.race([
+        new Promise<GetDomResponse>((resolve, reject) => {
+        const handler = (_tabId: number, _changeInfo: browser.Tabs.OnUpdatedChangeInfoType, tab: browser.Tabs.Tab) => {
+          if (tabId != tab.id) return;
+          if (tab.status != 'complete') return;
+          if (tab.url == 'about:blank') return;
+          browser.tabs.onUpdated.removeListener(handler);
+          browser.tabs.onRemoved.removeListener(closedHandler);
 
-  const doc = (new DOMParser).parseFromString(res.serializedDocument, 'text/html');
+          browser.tabs.sendMessage(tabId, {
+            messageType: 'request',
+            commandType: 'getDom',
+            requestId: Math.random().toString(),
+            payload: {},
+          }).then((res) => {
+            if (res && 'object' == typeof res) {
+              resolve(res as GetDomResponse);
+            } else {
+              console.error(res);
+            }
+          }).catch((e) => {
+            reject(e);
+          });
+        };
+        const closedHandler = (closedId: number) => {
+          if (tabId != closedId) return;
+          closed = true;
+          reject('Tab closed');
+        };
+        browser.tabs.onRemoved.addListener(closedHandler);
+        browser.tabs.onUpdated.addListener(handler, {
+          properties: ['status'],
+        });
+      }),
+      new Promise<never>((_res, rej) => setTimeout(() => rej('timeout'), 60000)),
+    ]).catch<never>((e) => {
+      if (closed) throw e;
+      browser.tabs.remove(tabId).catch((e) => {
+        console.error(e);
+      });
+      throw e;
+    });
+
+    await browser.tabs.remove(tabId);
+    cachedDoc = res.serializedDocument;
+    await putCache(url, cachedDoc);
+  }
+
+  const doc = (new DOMParser).parseFromString(cachedDoc, 'text/html');
   const base = doc.createElement('base');
   base.href = url;
   doc.head.append(base);
